@@ -1,0 +1,392 @@
+{
+  "name": "My workflow 2",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "webhook-lead",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -880,
+        -320
+      ],
+      "id": "849ea087-0731-46d8-821b-165273dc8438",
+      "name": "Webhook",
+      "webhookId": "7d17bb44-3813-4145-b381-ed0b7905a234"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -624,
+        -288
+      ],
+      "id": "7a4d01d2-1bb0-410b-b4a6-913a3dae747b",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "contacts",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "phone_number",
+              "condition": "eq",
+              "keyValue": "={{ $('Webhook').item.json.body.data.from }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -384,
+        -240
+      ],
+      "id": "be221a72-0373-429a-ab3e-cf8a49c2e2ab",
+      "name": "Get many rows",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "OQ8CiFr6gxS7eOjB",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d2f00ebd-1af0-4b14-be80-63b481938513",
+              "leftValue": "={{ $json.phone_number }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -640,
+        32
+      ],
+      "id": "f00bcd8c-6b0d-4931-88e2-0abcf5d645e8",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "tableId": "contacts",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "phone_number",
+              "fieldValue": "={{ $('Webhook').item.json.body.data.from }}"
+            },
+            {
+              "fieldId": "lead_status",
+              "fieldValue": "new"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -464,
+        192
+      ],
+      "id": "bc122815-9034-4e91-8b1d-52bce052771c",
+      "name": "Create a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "OQ8CiFr6gxS7eOjB",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "chat_history",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "phone_number",
+              "fieldValue": "={{ $('Webhook').item.json.body.data.from }}"
+            },
+            {
+              "fieldId": "role",
+              "fieldValue": "user"
+            },
+            {
+              "fieldId": "message",
+              "fieldValue": "={{ $('Webhook').item.json.body.data.body }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -256,
+        0
+      ],
+      "id": "0b25e324-1512-4bed-97bc-1771f881814c",
+      "name": "log user message",
+      "credentials": {
+        "supabaseApi": {
+          "id": "OQ8CiFr6gxS7eOjB",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message }}",
+        "options": {
+          "systemMessage": "You are an AI Customer Support Assistant. write the line in starting of every answer and your respone must b after one line after this.\"Nazakat's omniAgents for bussines is here:\"\n\nCRITICAL LANGUAGE RULES:\n1. ALWAYS respond in polite and natural Roman Urdu (or English if the user messages in English).\n2. NEVER use Devanagari script (Hindi characters like नमस्ते) or Arabic script (Urdu font). Always use the Latin alphabet (e.g., \"Assalam-o-Alaikum! Aap ki kya madad kar sakta hoon?\").\n3. Keep responses short, concise, and helpful for WhatsApp chat."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -64,
+        -304
+      ],
+      "id": "461e88f5-d2c2-466b-88a6-16c078c3febf",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.ultramsg.com/YOUR_INSTANCE_ID/messages/chat",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "YOUR_ULTRAMSG_TOKEN"
+            },
+            {
+              "name": "to",
+              "value": "={{ $('Webhook').item.json.body.data.from }}"
+            },
+            {
+              "name": "body",
+              "value": "={{ $('AI Agent').item.json.output }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        208,
+        0
+      ],
+      "id": "c37043d8-11a4-4b60-a0e1-a01e898347d5",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "tableId": "chat_history",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "phone_number",
+              "fieldValue": "={{ $('Webhook').item.json.body.data.from }}"
+            },
+            {
+              "fieldId": "role",
+              "fieldValue": "assistant"
+            },
+            {
+              "fieldId": "message",
+              "fieldValue": "={{ $('AI Agent').item.json.output }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        368,
+        -160
+      ],
+      "id": "b3b697c0-36fe-4c41-ba57-11ff260b4504",
+      "name": "log bot response",
+      "credentials": {
+        "supabaseApi": {
+          "id": "OQ8CiFr6gxS7eOjB",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        -16,
+        64
+      ],
+      "id": "51513d78-3e87-4b5f-9baf-2455dac0ffd3",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "zxQCMoG3QsgxKjpD",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get many rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many rows": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "log user message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a row": {
+      "main": [
+        [
+          {
+            "node": "log user message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "log user message": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "log bot response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "ff0f0807-c1b7-4a8f-bd12-b2ce20c00a97",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "33067ee8d6672ca14736d851d51e4236ea4ea4bfe1b0d93fdd21a765aaa30cae"
+  },
+  "nodeGroups": [],
+  "id": "3y7IFtrxY1Ie1WR8",
+  "tags": []
+}
